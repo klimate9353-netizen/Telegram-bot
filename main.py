@@ -426,25 +426,33 @@ def _which(cmd: str) -> str | None:
 
 
 def find_soffice() -> List[str] | None:
-    """Return command list to run LibreOffice headless conversion, or None if not found.
-
-    On Linux (Render), the executable might be `soffice` OR `libreoffice`.
-    """
-    # 1) PATH (Linux/Windows)
-    p = _which("soffice") or _which("libreoffice") or _which("soffice.exe") or _which("libreoffice.exe")
+    """Return command list to run LibreOffice headless conversion, or None if not found."""
+    # 1) PATH: linux/mac/windows
+    p = _which("soffice") or _which("libreoffice") or _which("soffice.exe")
     if p:
         return [p]
 
-    # 2) Common Linux paths (Render/Debian/Ubuntu)
-    linux_candidates = [
+    # 2) Common Linux install paths
+    candidates = [
         "/usr/bin/soffice",
         "/usr/bin/libreoffice",
         "/usr/lib/libreoffice/program/soffice",
         "/usr/lib/libreoffice/program/soffice.bin",
     ]
-    for c in linux_candidates:
+    for c in candidates:
         if os.path.exists(c):
             return [c]
+
+    # 3) Common Windows paths
+    win_candidates = [
+        r"C:\\Program Files\\LibreOffice\\program\\soffice.exe",
+        r"C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe",
+    ]
+    for c in win_candidates:
+        if os.path.exists(c):
+            return [c]
+
+    return None
 
     # 3) Common Windows paths
     win_candidates = [
