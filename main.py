@@ -9,6 +9,7 @@ import subprocess
 import asyncio
 import ssl
 import threading
+import uuid
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 try:
@@ -425,23 +426,36 @@ def _which(cmd: str) -> str | None:
 
 
 def find_soffice() -> List[str] | None:
-    """Return command list to run LibreOffice headless conversion, or None if not found."""
-    # 1) PATH
-    p = _which("soffice") or _which("soffice.exe")
+    """Return command list to run LibreOffice headless conversion, or None if not found.
+
+    On Linux (Render), the executable might be `soffice` OR `libreoffice`.
+    """
+    # 1) PATH (Linux/Windows)
+    p = _which("soffice") or _which("libreoffice") or _which("soffice.exe") or _which("libreoffice.exe")
     if p:
         return [p]
 
-    # 2) Common Windows paths
-    candidates = [
+    # 2) Common Linux paths (Render/Debian/Ubuntu)
+    linux_candidates = [
+        "/usr/bin/soffice",
+        "/usr/bin/libreoffice",
+        "/usr/lib/libreoffice/program/soffice",
+        "/usr/lib/libreoffice/program/soffice.bin",
+    ]
+    for c in linux_candidates:
+        if os.path.exists(c):
+            return [c]
+
+    # 3) Common Windows paths
+    win_candidates = [
         r"C:\\Program Files\\LibreOffice\\program\\soffice.exe",
         r"C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe",
     ]
-    for c in candidates:
+    for c in win_candidates:
         if os.path.exists(c):
             return [c]
+
     return None
-
-
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     if not user or not update.message:
@@ -871,7 +885,7 @@ async def handle_word_to_pdf(query, context: ContextTypes.DEFAULT_TYPE, user_id:
     soffice_cmd = find_soffice()
     if not soffice_cmd:
         await query.edit_message_text(
-            tr(context, "❌ LibreOffice (soffice) topilmadi. LibreOffice o‘rnatilganini va PATH ga qo‘shilganini tekshiring.", "❌ LibreOffice (soffice) не найден. Проверьте, что LibreOffice установлен и добавлен в PATH.")
+            tr(context, "❌ LibreOffice topilmadi (soffice/libreoffice). Render build’da LibreOffice o‘rnatilganini tekshiring.", "❌ LibreOffice не найден (soffice/libreoffice). Проверьте, что LibreOffice установлен на сервере.")
         )
         return
 
@@ -889,10 +903,17 @@ async def handle_word_to_pdf(query, context: ContextTypes.DEFAULT_TYPE, user_id:
 
         # LibreOffice headless conversion
         # soffice --headless --nologo --nofirststartwizard --convert-to pdf --outdir <tmpdir> <in_path>
+        # Use a unique LibreOffice profile per conversion to avoid "UserInstallation is locked"
+        profile_dir = os.path.join(tmpdir, f"lo_profile_{uuid.uuid4().hex}")
+        os.makedirs(profile_dir, exist_ok=True)
+
         cmd = list(soffice_cmd) + [
             "--headless",
             "--nologo",
+            "--nolockcheck",
+            "--nodefault",
             "--nofirststartwizard",
+            f"-env:UserInstallation=file://{profile_dir}",
             "--convert-to",
             "pdf",
             "--outdir",
@@ -905,7 +926,7 @@ async def handle_word_to_pdf(query, context: ContextTypes.DEFAULT_TYPE, user_id:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            timeout=120,
+            timeout=180,
         )
 
         # LibreOffice returns 0 on success; still verify output exists
