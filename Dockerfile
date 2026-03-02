@@ -1,21 +1,32 @@
 FROM python:3.13-slim
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    libreoffice-core libreoffice-writer libreoffice-common \
-    fonts-dejavu fonts-liberation \
- && update-ca-certificates \
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# LibreOffice + fontlar (PDF’да ёзувлар тўғри чиқиши учун)
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+    libreoffice-writer libreoffice-common libreoffice-core \
+    ca-certificates fonts-dejavu fonts-liberation \
  && rm -rf /var/lib/apt/lists/*
 
-# LibreOffice бинарниклари шу ерда бўлади, PATH'га қўшиб қўямиз
-ENV PATH="/usr/lib/libreoffice/program:${PATH}"
-
-# баъзи системаларда /usr/bin/soffice бўлмаслиги мумкин — мана шу 100% қилади
-RUN ln -sf /usr/lib/libreoffice/program/soffice /usr/bin/soffice || true
-
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
+
+# Dependency install (Poetry бўлса — Poetry, бўлмаса requirements.txt)
+COPY pyproject.toml poetry.lock* /app/
+COPY requirements.txt* /app/
+
+RUN pip install --no-cache-dir -U pip \
+ && if [ -f pyproject.toml ]; then \
+      pip install --no-cache-dir poetry && \
+      poetry config virtualenvs.create false && \
+      poetry install --only main --no-interaction --no-ansi ; \
+    elif [ -f requirements.txt ]; then \
+      pip install --no-cache-dir -r requirements.txt ; \
+    else \
+      echo "ERROR: pyproject.toml ҳам requirements.txt ҳам йўқ" && exit 1 ; \
+    fi
+
+COPY . /app
 
 CMD ["python", "main.py"]
