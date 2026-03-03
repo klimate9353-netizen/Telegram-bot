@@ -384,25 +384,19 @@ def kb_finish_images_to_pdf(lang: str = "uz") -> InlineKeyboardMarkup:
         [InlineKeyboardButton(tr_lang(lang, "🗑 Clear images", "🗑 Очистить изображения"), callback_data="clear_img2pdf")]
     ])
 
-def kb_image_actions(ext: str, lang: str = "uz", is_photo: bool = False) -> InlineKeyboardMarkup:
-    """When a user sends a JPG/PNG image, offer exactly two actions:
+def kb_image_actions(ext: str, lang: str = "uz") -> InlineKeyboardMarkup:
+    """When a user sends a JPG/PNG image (photo or image-document), offer exactly two actions:
     1) Convert format (JPG<->PNG)
     2) Convert accumulated images to PDF (reuses existing Finish PDF flow)
-
-    Note: Telegram 'photo' messages are usually compressed and often become JPEG on Telegram's side.
-    In that case, we label buttons as PHOTO(JPG) to avoid confusing the user.
     """
     ext = (ext or "jpg").lower().lstrip(".")
     if ext == "png":
         btn1 = InlineKeyboardButton("🖼 PNG → JPG", callback_data="lastimg:jpg")
         btn2 = InlineKeyboardButton("📄 PNG → PDF", callback_data="finish_img2pdf")
     else:
-        if is_photo:
-            btn1 = InlineKeyboardButton("🖼 PHOTO (JPG) → PNG", callback_data="lastimg:png")
-            btn2 = InlineKeyboardButton("📄 PHOTO (JPG) → PDF", callback_data="finish_img2pdf")
-        else:
-            btn1 = InlineKeyboardButton("🖼 JPG → PNG", callback_data="lastimg:png")
-            btn2 = InlineKeyboardButton("📄 JPG → PDF", callback_data="finish_img2pdf")
+        # default to JPG
+        btn1 = InlineKeyboardButton("🖼 JPG → PNG", callback_data="lastimg:png")
+        btn2 = InlineKeyboardButton("📄 JPG → PDF", callback_data="finish_img2pdf")
     return InlineKeyboardMarkup([[btn1, btn2]])
 
 def kb_word_to_pdf(lang: str = "uz") -> InlineKeyboardMarkup:
@@ -649,40 +643,13 @@ async def on_word(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 async def on_image_doc_convert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    # Handle JPG/PNG sent as document (not photo) for single-file conversion.
-    user = update.effective_user
-    msg = update.message
-    if not user or not msg or not msg.document:
-        return
+    """Handle JPG/PNG sent as document ("Отправить как файл").
 
-    await add_user(user.id, context)
-    lang = get_lang(context)
-
-    doc = msg.document
-    fname = (doc.file_name or "").lower()
-    if not (fname.endswith(".jpg") or fname.endswith(".jpeg") or fname.endswith(".png")):
-        return
-
-    ext = os.path.splitext(fname)[1].lower().lstrip(".")
-    if ext == "jpeg":
-        ext = "jpg"
-
-    PENDING_IMG_CONV[user.id] = {
-        "file_id": doc.file_id,
-        "name": doc.file_name or f"image.{ext}",
-        "ext": ext,
-    }
-
-    kb = kb_image_convert(ext, lang)
-    if not kb.inline_keyboard:
-        await msg.reply_text(
-            "⚠️ Этот формат изображения пока не поддерживается." if lang == "ru" else "⚠️ Bu rasm formatini hozircha o‘zgartira olmayman."
-        )
-        return
-    await msg.reply_text(
-        "🖼 Изображение получено. В какой формат конвертировать?" if lang == "ru" else "🖼 Rasm qabul qilindi. Qaysi formatga o‘tkazamiz?",
-        reply_markup=kb
-    )
+    We route to the unified `on_image()` flow so the user always gets TWO actions:
+      1) Convert format (JPG <-> PNG)
+      2) Convert to PDF (image(s) -> PDF)
+    """
+    await on_image(update, context)
 
 async def on_image(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
@@ -699,7 +666,7 @@ async def on_image(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if msg.photo:
         file_id = msg.photo[-1].file_id
         src_ext = "jpg"  # Telegram photo odatda JPEG bo‘ladi
-    elif msg.document and (msg.document.mime_type or "").startswith("image/"):
+    elif msg.document and (((msg.document.mime_type or "").startswith("image/")) or ((msg.document.file_name or "").lower().endswith((".png", ".jpg", ".jpeg")))):
         file_id = msg.document.file_id
 
         # PNG/JPG ni mime_type orqali ham aniqlaymiz (file_name bo‘lmasligi mumkin)
@@ -759,21 +726,10 @@ async def on_image(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     PENDING_IMAGES.setdefault(user.id, []).append(pdf_path)
 
-    extra_note = ""
-    if msg.photo:
-        extra_note = (
-            "\n\nℹ️ Примечание: если отправить картинку как фото (сжатое), Telegram часто конвертирует её в JPG. "
-            "Чтобы сохранить оригинальный PNG, отправляйте изображение “как файл” (Отправить как файл)."
-            if lang == "ru"
-            else
-            "\n\nℹ️ Eslatma: rasmni oddiy “Фото/Сжат” qilib yuborganda Telegram ko‘pincha uni JPG ga aylantiradi. "
-            "PNG asl holatda qolishi uchun rasmni “Отправить как файл” qilib yuboring."
-        )
-
     await msg.reply_text(
         (f"✅ Изображений получено: {len(PENDING_IMAGES[user.id])}.\nВыберите действие:" if lang == "ru" else
-         f"✅ Rasm qabul qilindi: {len(PENDING_IMAGES[user.id])} ta.\nKerakli amalni tanlang:") + extra_note,
-        reply_markup=kb_image_actions(src_ext, lang, is_photo=bool(msg.photo))
+         f"✅ Rasm qabul qilindi: {len(PENDING_IMAGES[user.id])} ta.\nKerakli amalni tanlang:"),
+        reply_markup=kb_image_actions(src_ext, lang)
     )
 
 async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
