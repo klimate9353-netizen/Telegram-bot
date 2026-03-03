@@ -125,11 +125,27 @@ def _start_health_server_if_port_set() -> None:
         return
 
     class _Handler(BaseHTTPRequestHandler):
-        def do_GET(self):
+        def _reply(self, body: bool) -> None:
+            # UptimeRobot can use HEAD; some monitors also hit /healthz
+            if self.path not in ("/", "/health", "/healthz"):
+                self.send_response(404)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.end_headers()
+                if body:
+                    self.wfile.write(b"not found")
+                return
+
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.end_headers()
-            self.wfile.write(b"ok")
+            if body:
+                self.wfile.write(b"ok")
+
+        def do_GET(self):
+            self._reply(body=True)
+
+        def do_HEAD(self):
+            self._reply(body=False)
 
         # silence default request logs
         def log_message(self, format, *args):
@@ -312,7 +328,7 @@ def _greeting_uz() -> str:
         'u yerdagi adminlarga habar bering.\n'
         'Bizning foydali botlar kanali 👉 '
         '<b>https://t.me/+skp5TgimYIJjYzIy</b>\n\n'
-        '🔗 <b>BOSHLASH UCHUN</b> MENGA <b>JPG</b>, <b>PNG</b> rasm yoki <b>PDF</b> FAYL SIFATIDA '
+        '🔗 <b>BOSHLASH UCHUN</b> MENGA <b>JPG</b>, <b>PNG</b> rasm yoki <b>PDF</b> fayl '
         'YUBORING ⤵️'
     )
 
@@ -327,7 +343,7 @@ def _greeting_ru() -> str:
         '🔁 Конвертация <b>Word.doc</b>/<b>Word.docx</b> → <b>PDF</b>\n\n'
         'ℹ️ Если возникнут ошибки — напишите админам в нашем канале полезных ботов:\n'
         '<b>https://t.me/+skp5TgimYIJjYzIy</b>\n\n'
-        '🔗 <b>ДЛЯ НАЧАЛА</b> отправьте мне как файл <b>JPG</b>, <b>PNG</b>, <b>PDF</b> или <b>DOC/DOCX</b> ⤵️'
+        '🔗 <b>ДЛЯ НАЧАЛА</b> отправьте мне <b>JPG</b>, <b>PNG</b>, <b>PDF</b> или <b>DOC/DOCX</b> ⤵️'
     )
 
 
