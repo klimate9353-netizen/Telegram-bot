@@ -703,8 +703,6 @@ elif msg.document and (msg.document.mime_type or "").startswith("image/"):
     else:
         # keep default
         src_ext = "jpg"
-else:
-    return
 
     await context.bot.send_chat_action(chat_id=msg.chat_id, action=ChatAction.UPLOAD_DOCUMENT)
 
