@@ -687,13 +687,16 @@ async def on_image(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await add_user(user.id, context)
     lang = get_lang(context)
 
-src_ext = "jpg"
-if msg.photo:
-    file_id = msg.photo[-1].file_id
-    src_ext = "jpg"  # Telegram photo is effectively JPEG
+    src_ext = "jpg"
+    file_id = None
+
+    if msg.photo:
+        file_id = msg.photo[-1].file_id
+        src_ext = "jpg"  # Telegram photo odatda JPEG bo‘ladi
     elif msg.document and (msg.document.mime_type or "").startswith("image/"):
         file_id = msg.document.file_id
-        # Best-effort: infer extension from mime_type first, then filename
+
+        # PNG/JPG ni mime_type orqali ham aniqlaymiz (file_name bo‘lmasligi mumkin)
         mime = (msg.document.mime_type or "").lower()
         fname = (msg.document.file_name or "").lower()
 
@@ -703,6 +706,9 @@ if msg.photo:
             src_ext = "jpg"
         else:
             src_ext = "jpg"
+    else:
+        return
+
     await context.bot.send_chat_action(chat_id=msg.chat_id, action=ChatAction.UPLOAD_DOCUMENT)
 
     tmpdir = context.user_data.get("img2pdf_tmpdir")
