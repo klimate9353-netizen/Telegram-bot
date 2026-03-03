@@ -312,7 +312,7 @@ def _greeting_uz() -> str:
         'u yerdagi adminlarga habar bering.\n'
         'Bizning foydali botlar kanali 👉 '
         '<b>https://t.me/+skp5TgimYIJjYzIy</b>\n\n'
-        '🔗 <b>BOSHLASH UCHUN</b> MENGA <b>JPG</b>, <b>PNG</b> rasm yoki <b>PDF</b> FAYL SIFATIDA '
+        '🔗 <b>BOSHLASH UCHUN</b> MENGA <b>JPG</b>, <b>PNG</b> rasm yoki <b>PDF</b> fayl '
         'YUBORING ⤵️'
     )
 
@@ -327,7 +327,7 @@ def _greeting_ru() -> str:
         '🔁 Конвертация <b>Word.doc</b>/<b>Word.docx</b> → <b>PDF</b>\n\n'
         'ℹ️ Если возникнут ошибки — напишите админам в нашем канале полезных ботов:\n'
         '<b>https://t.me/+skp5TgimYIJjYzIy</b>\n\n'
-        '🔗 <b>ДЛЯ НАЧАЛА</b> отправьте мне как фойл <b>JPG</b>, <b>PNG</b>, <b>PDF</b> или <b>DOC/DOCX</b> ⤵️'
+        '🔗 <b>ДЛЯ НАЧАЛА</b> отправьте мне <b>JPG</b>, <b>PNG</b>, <b>PDF</b> или <b>DOC/DOCX</b> ⤵️'
     )
 
 
@@ -662,8 +662,10 @@ async def on_image(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     src_ext = "jpg"
     file_id = None
+    is_compressed_photo = False
 
     if msg.photo:
+        is_compressed_photo = True
         file_id = msg.photo[-1].file_id
         src_ext = "jpg"  # Telegram photo odatda JPEG bo‘ladi
     elif msg.document and (((msg.document.mime_type or "").startswith("image/")) or ((msg.document.file_name or "").lower().endswith((".png", ".jpg", ".jpeg")))):
@@ -726,11 +728,22 @@ async def on_image(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     PENDING_IMAGES.setdefault(user.id, []).append(pdf_path)
 
-    await msg.reply_text(
-        (f"✅ Изображений получено: {len(PENDING_IMAGES[user.id])}.\nВыберите действие:" if lang == "ru" else
-         f"✅ Rasm qabul qilindi: {len(PENDING_IMAGES[user.id])} ta.\nKerakli amalni tanlang:"),
-        reply_markup=kb_image_actions(src_ext, lang)
+    txt = (
+        f"✅ Изображений получено: {len(PENDING_IMAGES[user.id])}.\nВыберите действие:"
+        if lang == "ru"
+        else f"✅ Rasm qabul qilindi: {len(PENDING_IMAGES[user.id])} ta.\nKerakli amalni tanlang:"
     )
+
+    # Only for compressed photos ("Фото/Сжат"): Telegram may convert PNG to JPG.
+    if is_compressed_photo:
+        txt += (
+            "\n\nℹ️ Eslatma: rasmni oddiy “Фото/Сжат” qilib yuborganda Telegram ko‘pincha uni JPG ga aylantiradi. "
+            "PNG asl holatda qolishi uchun rasmni “Отправить как файл” qilib yuboring."
+            "\nℹ️ Примечание: если отправить изображение как обычное «Фото/Сжат», Telegram часто конвертирует его в JPG. "
+            "Чтобы PNG сохранился в исходном виде, отправьте «Отправить как файл»."
+        )
+
+    await msg.reply_text(txt, reply_markup=kb_image_actions(src_ext, lang))
 
 async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
