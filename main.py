@@ -691,7 +691,6 @@ async def on_image(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if msg.photo:
         file_id = msg.photo[-1].file_id
         src_ext = "jpg"  # Telegram photo is effectively JPEG
-@@
 -    elif msg.document and (msg.document.mime_type or "").startswith("image/"):
 -        file_id = msg.document.file_id
 -        # Best-effort: infer extension from filename
