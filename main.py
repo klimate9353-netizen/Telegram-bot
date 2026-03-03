@@ -312,7 +312,7 @@ def _greeting_uz() -> str:
         'u yerdagi adminlarga habar bering.\n'
         'Bizning foydali botlar kanali 👉 '
         '<b>https://t.me/+skp5TgimYIJjYzIy</b>\n\n'
-        '🔗 <b>BOSHLASH UCHUN</b> MENGA <b>JPG</b>, <b>PNG</b> rasm yoki <b>PDF</b> fayl '
+        '🔗 <b>BOSHLASH UCHUN</b> MENGA <b>JPG</b>, <b>PNG</b> rasm yoki <b>PDF</b> FAYL SIFATIDA '
         'YUBORING ⤵️'
     )
 
@@ -327,7 +327,7 @@ def _greeting_ru() -> str:
         '🔁 Конвертация <b>Word.doc</b>/<b>Word.docx</b> → <b>PDF</b>\n\n'
         'ℹ️ Если возникнут ошибки — напишите админам в нашем канале полезных ботов:\n'
         '<b>https://t.me/+skp5TgimYIJjYzIy</b>\n\n'
-        '🔗 <b>ДЛЯ НАЧАЛА</b> отправьте мне <b>JPG</b>, <b>PNG</b>, <b>PDF</b> или <b>DOC/DOCX</b> ⤵️'
+        '🔗 <b>ДЛЯ НАЧАЛА</b> отправьте мне как файл <b>JPG</b>, <b>PNG</b>, <b>PDF</b> или <b>DOC/DOCX</b> ⤵️'
     )
 
 
