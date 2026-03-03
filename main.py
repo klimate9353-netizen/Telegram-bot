@@ -691,19 +691,18 @@ src_ext = "jpg"
 if msg.photo:
     file_id = msg.photo[-1].file_id
     src_ext = "jpg"  # Telegram photo is effectively JPEG
-elif msg.document and (msg.document.mime_type or "").startswith("image/"):
-    file_id = msg.document.file_id
-    # Best-effort: infer extension from mime_type first, then filename
-    mime = (msg.document.mime_type or "").lower()
-    fname = (msg.document.file_name or "").lower()
-    if ("image/png" in mime) or fname.endswith(".png"):
-        src_ext = "png"
-    elif ("image/jpeg" in mime) or ("image/jpg" in mime) or fname.endswith(".jpeg") or fname.endswith(".jpg"):
-        src_ext = "jpg"
-    else:
-        # keep default
-        src_ext = "jpg"
+    elif msg.document and (msg.document.mime_type or "").startswith("image/"):
+        file_id = msg.document.file_id
+        # Best-effort: infer extension from mime_type first, then filename
+        mime = (msg.document.mime_type or "").lower()
+        fname = (msg.document.file_name or "").lower()
 
+        if ("image/png" in mime) or fname.endswith(".png"):
+            src_ext = "png"
+        elif ("image/jpeg" in mime) or ("image/jpg" in mime) or fname.endswith(".jpeg") or fname.endswith(".jpg"):
+            src_ext = "jpg"
+        else:
+            src_ext = "jpg"
     await context.bot.send_chat_action(chat_id=msg.chat_id, action=ChatAction.UPLOAD_DOCUMENT)
 
     tmpdir = context.user_data.get("img2pdf_tmpdir")
